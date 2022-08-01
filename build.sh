@@ -4,4 +4,4 @@ SCRIPT_PATH=$(dirname $(realpath $0))
 rm -r "$SCRIPT_PATH/powertools/"
 mkdir "$SCRIPT_PATH/powertools"
 cp -r "$SCRIPT_PATH/dist" "$SCRIPT_PATH/LICENSE" "$SCRIPT_PATH/main.py" "$SCRIPT_PATH/package.json" "$SCRIPT_PATH/plugin.json" "$SCRIPT_PATH/README.md" "$SCRIPT_PATH/server.py" "$SCRIPT_PATH/powertools"
-rsync -avz "$SCRIPT_PATH/powertools" steamdeck:/home/deck/homebrew/plugins/powertools
+rsync -avz "$SCRIPT_PATH/powertools" steamdeck:/home/deck/homebrew/plugins
