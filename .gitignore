@@ -23,6 +23,7 @@ coverage
 node_modules
 bower_components
 package-lock.json
+powertools
 
 # Editors
 .idea
