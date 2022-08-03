@@ -37,8 +37,11 @@ var startHook: any = null;
 
 var smt_backup: boolean = true;
 var cpus_backup: number = 8;
-var boost_backup: boolean = true;
-var freq_backup: number = 8;
+var manual_backup: boolean = true;
+var minCPUFreq_backup: number = 1400;
+var maxCPUFreq_backup: number = 3500;
+var minGPUFreq_backup: number = 200;
+var maxGPUFreq_backup: number = 1600;
 var slowPPT_backup: number = 1;
 var fastPPT_backup: number = 1;
 var chargeNow_backup: number = 5200000;
@@ -79,16 +82,34 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
     setCPUs_internal(value);
   };
 
-  const [boostGlobal, setBoost_internal] = useState<boolean>(boost_backup);
-  const setBoost = (value: boolean) => {
-    boost_backup = value;
-    setBoost_internal(value);
+  const [manualGlobal, setManual_internal] = useState<boolean>(manual_backup);
+  const setManual = (value: boolean) => {
+    manual_backup = value;
+    setManual_internal(value);
   };
 
-  const [freqGlobal, setFreq_internal] = useState<number>(freq_backup);
-  const setFreq = (value: number) => {
-    freq_backup = value;
-    setFreq_internal(value);
+  const [minCPUFreqGlobal, setMinCPUFreq_internal] = useState<number>(minCPUFreq_backup);
+  const setMinCPUFreq = (value: number) => {
+    minCPUFreq_backup = value;
+    setMinCPUFreq_internal(value);
+  };
+
+  const [maxCPUFreqGlobal, setMaxCPUFreq_internal] = useState<number>(maxCPUFreq_backup);
+  const setMaxCPUFreq = (value: number) => {
+    maxCPUFreq_backup = value;
+    setMaxCPUFreq_internal(value);
+  };
+
+  const [minGPUFreqGlobal, setMinGPUFreq_internal] = useState<number>(minGPUFreq_backup);
+  const setMinGPUFreq = (value: number) => {
+    minGPUFreq_backup = value;
+    setMinGPUFreq_internal(value);
+  };
+
+  const [maxGPUFreqGlobal, setMaxGPUFreq_internal] = useState<number>(maxGPUFreq_backup);
+  const setMaxGPUFreq = (value: number) => {
+    maxGPUFreq_backup = value;
+    setMaxGPUFreq_internal(value);
   };
 
   const [slowPPTGlobal, setSlowPPT_internal] = useState<number>(slowPPT_backup);
@@ -150,8 +171,11 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
       python.resolve(python.getSMT(), setSMT);
       python.resolve(python.getCPUs(), setCPUs);
-      python.resolve(python.getCPUBoost(), setBoost);
-      python.resolve(python.getMaxBoost(), setFreq);
+      python.resolve(python.getManual(), setManual);
+      python.resolve(python.getMinCPUFreq(), setMinCPUFreq);
+      python.resolve(python.getMaxCPUFreq(), setMaxCPUFreq);
+      python.resolve(python.getMinGPUFreq(), setMinGPUFreq);
+      python.resolve(python.getMaxGPUFreq(), setMaxGPUFreq);
 
       python.resolve(python.getGPUPowerI(1), setSlowPPT);
       python.resolve(python.getGPUPowerI(2), setFastPPT);
@@ -232,34 +256,50 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
-          checked={boostGlobal}
-          label="Boost"
-          description="Allows the CPU to go above max frequency"
-          onChange={(boost: boolean) => {
-            console.log("Boost is now " + boost.toString());
-            python.execute(python.setCPUBoost(boost));
-            python.resolve(python.getCPUBoost(), setBoost);
+          checked={manualGlobal}
+          label="Manual"
+          description="Allows the configuration of min/max clocks for GPU and CPU"
+          onChange={(manual: boolean) => {
+            console.log("Manual is now " + manual.toString());
+            python.execute(python.setManual(manual));
+            python.resolve(python.getManual(), setManual);
           }}
         />
       </PanelSectionRow>
       <PanelSectionRow>
         <SliderField
-          label="Max Frequency"
-          value={freqGlobal}
-          max={2}
-          min={0}
-          notchCount={3}
-          notchLabels={[
-            {notchIndex: 0, label: "1.7GHz"},
-            {notchIndex: 1, label: "2.4GHz"},
-            {notchIndex: 2, label: "2.8GHz"},
-          ]}
-          notchTicksVisible={true}
+          label="Min CPU Frequency"
+          disabled={(!manualGlobal)}
+          value={minCPUFreqGlobal}
+          step={75}
+          minimumDpadGranularity={0.025}
+          max={3500}
+          min={1400}
+          showValue={true}
           onChange={(freq: number) => {
             console.log("CPU slider is now " + freq.toString());
-            if (freq != freqGlobal) {
-              python.execute(python.setMaxBoost(freq));
-              python.resolve(python.getMaxBoost(), setFreq);
+            if (freq != minCPUFreqGlobal) {
+              python.execute(python.setMinCPUFreq(freq));
+              python.resolve(python.getMinCPUFreq(), setMinCPUFreq);
+            }
+          }}
+        />
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <SliderField
+          label="Max CPU Frequency"
+          disabled={(!manualGlobal)}
+          value={maxCPUFreqGlobal}
+          step={75}
+          minimumDpadGranularity={0.025}
+          max={3500}
+          min={500}
+          showValue={true}
+          onChange={(freq: number) => {
+            console.log("CPU slider is now " + freq.toString());
+            if (freq != maxCPUFreqGlobal) {
+              python.execute(python.setMaxCPUFreq(freq));
+              python.resolve(python.getMaxCPUFreq(), setMaxCPUFreq);
             }
           }}
         />
@@ -268,6 +308,44 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       <div className={staticClasses.PanelSectionTitle}>
         GPU
       </div>
+      <PanelSectionRow>
+        <SliderField
+          label="Min GPU Frequency"
+          disabled={(!manualGlobal)}
+          value={minGPUFreqGlobal}
+          step={50}
+          minimumDpadGranularity={0.025}
+          max={1600}
+          min={200}
+          showValue={true}
+          onChange={(freq: number) => {
+            console.log("GPU slider is now " + freq.toString());
+            if (freq != minGPUFreqGlobal) {
+              python.execute(python.setMinGPUFreq(freq));
+              python.resolve(python.getMinGPUFreq(), setMinGPUFreq);
+            }
+          }}
+        />
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <SliderField
+          label="Max GPU Frequency"
+          disabled={(!manualGlobal)}
+          value={maxGPUFreqGlobal}
+          step={50}
+          minimumDpadGranularity={0.025}
+          max={1600}
+          min={200}
+          showValue={true}
+          onChange={(freq: number) => {
+            console.log("GPU slider is now " + freq.toString());
+            if (freq != maxGPUFreqGlobal) {
+              python.execute(python.setMaxGPUFreq(freq));
+              python.resolve(python.getMaxGPUFreq(), setMaxGPUFreq);
+            }
+          }}
+        />
+      </PanelSectionRow>
       <PanelSectionRow>
         {/* index: 1 */}
         <SliderField

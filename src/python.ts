@@ -53,20 +53,44 @@ export function getSMT(): Promise<any> {
     return server!.callPluginMethod("get_smt", {});
 }
 
-export function setCPUBoost(value: boolean): Promise<any> {
-    return server!.callPluginMethod("set_boost", {"enabled": value});
+export function setManual(value: boolean): Promise<any> {
+    return server!.callPluginMethod("set_manual", {"enabled": value});
 }
 
-export function getCPUBoost(): Promise<any> {
-    return server!.callPluginMethod("get_boost", {});
+export function getManual(): Promise<any> {
+    return server!.callPluginMethod("get_manual", {});
 }
 
-export function setMaxBoost(index: number): Promise<any> {
-    return server!.callPluginMethod("set_max_boost", {"index": index});
+export function setMinCPUFreq(freq: number): Promise<any> {
+    return server!.callPluginMethod("set_min_cpu_freq", {"freq": freq});
 }
 
-export function getMaxBoost(): Promise<any> {
-    return server!.callPluginMethod("get_max_boost", {});
+export function setMaxCPUFreq(freq: number): Promise<any> {
+    return server!.callPluginMethod("set_max_cpu_freq", {"freq": freq});
+}
+
+export function getMinCPUFreq(): Promise<any> {
+    return server!.callPluginMethod("get_min_cpu_freq", {});
+}
+
+export function getMaxCPUFreq(): Promise<any> {
+    return server!.callPluginMethod("get_max_cpu_freq", {});
+}
+
+export function setMinGPUFreq(freq: number): Promise<any> {
+    return server!.callPluginMethod("set_min_gpu_freq", {"freq": freq});
+}
+
+export function setMaxGPUFreq(freq: number): Promise<any> {
+    return server!.callPluginMethod("set_max_gpu_freq", {"freq": freq});
+}
+
+export function getMinGPUFreq(): Promise<any> {
+    return server!.callPluginMethod("get_min_gpu_freq", {});
+}
+
+export function getMaxGPUFreq(): Promise<any> {
+    return server!.callPluginMethod("get_max_gpu_freq", {});
 }
 
 export function setGPUPower(value: number, index: number): Promise<any> {

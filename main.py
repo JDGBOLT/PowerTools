@@ -32,23 +32,21 @@ import server as pt_server
 startup_time = time.time()
 
 class CPU:
-    SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
 
     def __init__(self, number, settings=None):
         self.number = number
 
         if settings is not None:
-            self.set_max_boost(settings["max_boost"])
+            self.set_max_freq(settings["max_freq"])
+            self.set_min_freq(settings["min_freq"])
             if settings["online"]:
                 self.enable()
             else:
                 self.disable()
             # TODO governor
-
-        if(self.status()):
-            self.max_boost = self._get_max_boost()
         else:
-            self.max_boost = CPU.SCALING_FREQUENCIES[-1]
+            self.max_freq = 3500
+            self.min_freq = 1400
 
     def enable(self):
         # CPU number 0 is special
@@ -58,9 +56,6 @@ class CPU:
         filepath = cpu_online_path(self.number)
         write_to_sys(filepath, 1)
 
-        # The user might have changed the maximum cpu clock while the cpu was offline
-        self._set_max_boost(self.max_boost)
-
     def disable(self):
         # CPU number 0 is special
         if(self.number == 0):
@@ -69,10 +64,11 @@ class CPU:
         filepath = cpu_online_path(self.number)
         write_to_sys(filepath, 0)
 
-    def set_max_boost(self, frequency):
-        self.max_boost = frequency
-        if(self.status()):
-            self._set_max_boost(frequency)
+    def set_max_freq(self, frequency):
+        self.max_freq = frequency
+
+    def set_min_freq(self, frequency):
+        self.min_freq = frequency
 
     def status(self) -> bool:
         # cpu number 0 is always online
@@ -88,7 +84,8 @@ class CPU:
     def settings(self) -> dict:
         return {
             "online": self.status(),
-            "max_boost": self.max_boost,
+            "max_freq": self.max_freq,
+            "min_freq": self.min_freq,
             "governor": self.governor(),
         }
 
@@ -101,30 +98,10 @@ class CPU:
         with open(filepath, mode="w") as f:
             f.write(governor)
 
-    def _set_max_boost(self, frequency):
-        if(frequency == CPU.SCALING_FREQUENCIES[-1]):
-            self._write_scaling_governor("schedutil")
-            return
-
-        if(self._read_scaling_governor() != "userspace"):
-            self._write_scaling_governor("userspace")
-        else:
-            filepath = cpu_freq_scaling_path(self.number)
-            write_to_sys(filepath, frequency)
-
-    def _get_max_boost(self) -> int:
-        filepath = cpu_freq_scaling_path(self.number)
-        freq_maybe = read_from_sys(filepath, amount=-1).strip()
-
-        if(freq_maybe is None or len(freq_maybe) == 0 or freq_maybe == "<unsupported>"):
-            return CPU.SCALING_FREQUENCIES[-1]
-
-        freq = int(freq_maybe)
-        return freq
-        
-
 class Plugin:
     CPU_COUNT = 8
+    gpu_min_freq = 200
+    gpu_max_freq = 1600
     FAN_SPEEDS = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
     gpu_power_values = [[-1, -1, -1], [1000000, 15000000, 29000000], [0, 15000000, 30000000]]
@@ -135,6 +112,8 @@ class Plugin:
     current_gameid = None
     old_gameid = None
     ready = False
+    manual = False
+    profile_changed = False
     
     async def get_version(self) -> str:
         return VERSION
@@ -177,30 +156,53 @@ class Plugin:
         logging.info(f"get_smt() -> {self.smt}")
         return self.smt
     
-    async def set_boost(self, enabled: bool) -> bool:
+    async def set_manual(self, enabled: bool) -> bool:
         self.modified_settings = True
-        write_cpu_boost(enabled)
+        self.manual = enabled
         return True
     
-    async def get_boost(self) -> bool:
-        return read_cpu_boost()
+    async def get_manual(self) -> bool:
+        return self.manual
 
-    async def set_max_boost(self, index):
+    async def set_max_cpu_freq(self, freq: int):
         self.modified_settings = True
-        if index < 0 or index >= len(CPU.SCALING_FREQUENCIES):
-            return 0
-
-        selected_freq = CPU.SCALING_FREQUENCIES[index]
 
         for cpu in self.cpus:
-            cpu.set_max_boost(selected_freq)
+            cpu.set_max_freq(freq)
 
         return len(self.cpus)
 
-    async def get_max_boost(self) -> int:
-        return CPU.SCALING_FREQUENCIES.index(self.cpus[0].max_boost)
+    async def get_max_cpu_freq(self) -> int:
+        return self.cpus[0].max_freq
+
+    async def set_min_cpu_freq(self, freq: int):
+        self.modified_settings = True
+
+        for cpu in self.cpus:
+            cpu.set_min_freq(freq)
+
+        return len(self.cpus)
+
+    async def get_min_cpu_freq(self) -> int:
+        return self.cpus[0].min_freq
 
     # GPU stuff
+
+    async def set_max_gpu_freq(self, freq: int):
+        self.modified_settings = True
+        self.gpu_max_freq = freq
+        return 0
+
+    async def get_max_gpu_freq(self) -> int:
+        return self.gpu_max_freq
+
+    async def set_min_gpu_freq(self, freq: int):
+        self.modified_settings = True
+        self.gpu_min_freq = freq
+        return 0
+
+    async def get_min_gpu_freq(self) -> int:
+        return self.gpu_min_freq
 
     async def set_gpu_power(self, value: int, power_number: int) -> bool:
         self.modified_settings = True
@@ -329,10 +331,44 @@ class Plugin:
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
+            if self.profile_changed == True:
+                write_manual(True)
+                self.write_clocks(self = self, gpu_min_freq = 200, gpu_max_freq =1600, cpu_min_freq = 1400, cpu_max_freq = 3500)
+                write_manual(False)
+                self.profile_changed = False
+            if self.manual:
+                if read_manual() != True:
+                    write_manual(True)
+                    self.write_clocks(self = self, gpu_max_freq = self.gpu_max_freq, gpu_min_freq= self.gpu_min_freq, cpu_min_freq=self.cpus[0].min_freq, cpu_max_freq= self.cpus[0].max_freq)
+                else:
+                    current_clocks = self.get_clocks(self)
+                    if current_clocks["gpu_min"] != self.gpu_min_freq or current_clocks["gpu_max"] != self.gpu_max_freq or current_clocks["cpu_min"] != self.cpus[0].min_freq or current_clocks["cpu_max"] != self.cpus[0].max_freq:
+                        self.write_clocks(self = self, gpu_max_freq = self.gpu_max_freq, gpu_min_freq= self.gpu_min_freq, cpu_min_freq=self.cpus[0].min_freq, cpu_max_freq= self.cpus[0].max_freq)
+            elif read_manual() == True:
+                self.write_clocks(self = self, gpu_min_freq = 200, gpu_max_freq =1600, cpu_min_freq = 1400, cpu_max_freq = 3500)
+                write_manual(False)
+
             #self.reload_current_settings(self)
 
             await asyncio.sleep(1)
         await pt_server.shutdown()
+
+    def get_clocks(self) -> dict:
+        clocks = dict()
+        if self.manual == True:
+            raw = read_from_sys("/sys/class/drm/card0/device/pp_od_clk_voltage", amount = -1).split()
+            clocks["gpu_min"] = int(raw[2].split("M")[0])
+            clocks["gpu_max"] = int(raw[4].split("M")[0])
+            clocks["cpu_min"] = int(raw[16].split("M")[0])
+            clocks["cpu_max"] = int(raw[18].split("M")[0])
+        return clocks
+
+    def write_clocks(self, gpu_min_freq: int, gpu_max_freq: int, cpu_min_freq: int, cpu_max_freq: int):
+        print("s 0 " + str(gpu_min_freq), file = open("/sys/class/drm/card0/device/pp_od_clk_voltage", "w"))
+        print("s 1 " + str(gpu_max_freq), file = open("/sys/class/drm/card0/device/pp_od_clk_voltage", "w"))
+        print("p 4 0 " + str(cpu_min_freq), file = open("/sys/class/drm/card0/device/pp_od_clk_voltage", "w"))
+        print("p 4 1 " + str(cpu_max_freq), file = open("/sys/class/drm/card0/device/pp_od_clk_voltage", "w"))
+        print("c", file = open("/sys/class/drm/card0/device/pp_od_clk_voltage", "w"))
 
     # called from main_view::onViewReady
     async def on_ready(self):
@@ -367,13 +403,15 @@ class Plugin:
             cpu_settings.append(cpu.settings())
         settings["threads"] = cpu_settings
         settings["smt"] = self.smt
-        settings["boost"] = read_cpu_boost()
+        settings["manual"] = self.manual
         return settings
 
     def current_gpu_settings(self) -> dict:
         settings = dict()
         settings["slowppt"] = read_gpu_ppt(1)
         settings["fastppt"] = read_gpu_ppt(2)
+        settings["min_freq"] = self.gpu_min_freq
+        settings["max_freq"] = self.gpu_max_freq
         return settings
 
     def current_fan_settings(self) -> dict:
@@ -423,8 +461,11 @@ class Plugin:
         for cpu_number in range(0, Plugin.CPU_COUNT):
             self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
         self.smt = settings["cpu"]["smt"]
-        write_cpu_boost(settings["cpu"]["boost"])
+        self.manual = settings["cpu"]["manual"]
+        self.profile_changed = True
         # GPU
+        self.gpu_max_freq = settings["gpu"]["max_freq"]
+        self.gpu_min_freq = settings["gpu"]["min_freq"]
         write_gpu_ppt(1, settings["gpu"]["slowppt"])
         write_gpu_ppt(2, settings["gpu"]["fastppt"])
         # Fan
@@ -500,11 +541,14 @@ def cpu_governor_scaling_path(cpu_number: int) -> str:
 def gpu_power_path(power_number: int) -> str:
     return f"/sys/class/hwmon/hwmon4/power{power_number}_cap"
 
-def read_cpu_boost() -> bool:
-    return read_from_sys("/sys/devices/system/cpu/cpufreq/boost") == "1"
+def read_manual() -> bool:
+    return read_from_sys("/sys/class/drm/card0/device/power_dpm_force_performance_level", amount = -1).strip() == "manual"
 
-def write_cpu_boost(enable: bool):
-    write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enable))
+def write_manual(enable: bool):
+    if enable:
+        write_to_sys("/sys/class/drm/card0/device/power_dpm_force_performance_level", "manual")
+    else:
+        write_to_sys("/sys/class/drm/card0/device/power_dpm_force_performance_level", "auto")
 
 def read_gpu_ppt(power_number: int) -> int:
     return read_sys_int(gpu_power_path(power_number))
