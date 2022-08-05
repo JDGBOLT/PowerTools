@@ -61,6 +61,14 @@ export function getManual(): Promise<any> {
     return server!.callPluginMethod("get_manual", {});
 }
 
+export function setLowMem(value: boolean): Promise<any> {
+    return server!.callPluginMethod("set_lowmem", {"enabled": value});
+}
+
+export function getLowMem(): Promise<any> {
+    return server!.callPluginMethod("get_lowmem", {});
+}
+
 export function setMinCPUFreq(freq: number): Promise<any> {
     return server!.callPluginMethod("set_min_cpu_freq", {"freq": freq});
 }

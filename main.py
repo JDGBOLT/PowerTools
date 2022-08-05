@@ -164,6 +164,14 @@ class Plugin:
     async def get_manual(self) -> bool:
         return self.manual
 
+    async def set_lowmem(self, enabled: bool) -> bool:
+        self.modified_settings = True
+        write_lowmem(enabled)
+        return True
+    
+    async def get_lowmem(self) -> bool:
+        return read_lowmem()
+
     async def set_max_cpu_freq(self, freq: int):
         self.modified_settings = True
 
@@ -404,6 +412,7 @@ class Plugin:
         settings["threads"] = cpu_settings
         settings["smt"] = self.smt
         settings["manual"] = self.manual
+        settings["lowmem"] = read_lowmem()
         return settings
 
     def current_gpu_settings(self) -> dict:
@@ -462,6 +471,8 @@ class Plugin:
             self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
         self.smt = settings["cpu"]["smt"]
         self.manual = settings["cpu"]["manual"]
+        if self.manual == True: 
+            write_lowmem(settings["cpu"]["lowmem"])
         self.profile_changed = True
         # GPU
         self.gpu_max_freq = settings["gpu"]["max_freq"]
@@ -549,6 +560,15 @@ def write_manual(enable: bool):
         write_to_sys("/sys/class/drm/card0/device/power_dpm_force_performance_level", "manual")
     else:
         write_to_sys("/sys/class/drm/card0/device/power_dpm_force_performance_level", "auto")
+
+def read_lowmem() -> bool:
+    return read_from_sys("/sys/class/drm/card0/device/pp_dpm_fclk", amount = 11) != "0: 800Mhz *"
+
+def write_lowmem(enable: bool):
+    if enable:
+        write_to_sys("/sys/class/drm/card0/device/pp_dpm_fclk", "1")
+    else:
+        write_to_sys("/sys/class/drm/card0/device/pp_dpm_fclk", "0")
 
 def read_gpu_ppt(power_number: int) -> int:
     return read_sys_int(gpu_power_path(power_number))

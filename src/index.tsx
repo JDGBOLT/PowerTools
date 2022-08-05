@@ -38,6 +38,7 @@ var startHook: any = null;
 var smt_backup: boolean = true;
 var cpus_backup: number = 8;
 var manual_backup: boolean = true;
+var lowmem_backup: boolean = false;
 var minCPUFreq_backup: number = 1400;
 var maxCPUFreq_backup: number = 3500;
 var minGPUFreq_backup: number = 200;
@@ -86,6 +87,12 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
   const setManual = (value: boolean) => {
     manual_backup = value;
     setManual_internal(value);
+  };
+
+  const [lowmemGlobal, setLowMem_internal] = useState<boolean>(lowmem_backup);
+  const setLowMem = (value: boolean) => {
+    lowmem_backup = value;
+    setLowMem_internal(value);
   };
 
   const [minCPUFreqGlobal, setMinCPUFreq_internal] = useState<number>(minCPUFreq_backup);
@@ -172,6 +179,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       python.resolve(python.getSMT(), setSMT);
       python.resolve(python.getCPUs(), setCPUs);
       python.resolve(python.getManual(), setManual);
+      python.resolve(python.getLowMem(), setLowMem);
       python.resolve(python.getMinCPUFreq(), setMinCPUFreq);
       python.resolve(python.getMaxCPUFreq(), setMaxCPUFreq);
       python.resolve(python.getMinGPUFreq(), setMinGPUFreq);
@@ -263,6 +271,19 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
             console.log("Manual is now " + manual.toString());
             python.execute(python.setManual(manual));
             python.resolve(python.getManual(), setManual);
+          }}
+        />
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <ToggleField
+          checked={lowmemGlobal}
+          disabled={(!manualGlobal)}
+          label="Lower Memory Clock Speed"
+          description="Forces the memory clock speed to be 400mhz"
+          onChange={(manual: boolean) => {
+            console.log("Manual is now " + manual.toString());
+            python.execute(python.setLowMem(manual));
+            python.resolve(python.getLowMem(), setLowMem);
           }}
         />
       </PanelSectionRow>
