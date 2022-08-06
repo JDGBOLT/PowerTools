@@ -37,6 +37,7 @@ var startHook: any = null;
 
 var smt_backup: boolean = true;
 var cpus_backup: number = 8;
+var governor_backup: number = 1;
 var manual_backup: boolean = true;
 var lowmem_backup: boolean = false;
 var minCPUFreq_backup: number = 1400;
@@ -93,6 +94,12 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
   const setLowMem = (value: boolean) => {
     lowmem_backup = value;
     setLowMem_internal(value);
+  };
+
+  const [governorGlobal, setGovernor_internal] = useState<number>(governor_backup);
+  const setGovernor = (value: number) => {
+    governor_backup = value;
+    setGovernor_internal(value);
   };
 
   const [minCPUFreqGlobal, setMinCPUFreq_internal] = useState<number>(minCPUFreq_backup);
@@ -178,6 +185,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
       python.resolve(python.getSMT(), setSMT);
       python.resolve(python.getCPUs(), setCPUs);
+      python.resolve(python.getGovernor(), setGovernor);
       python.resolve(python.getManual(), setManual);
       python.resolve(python.getLowMem(), setLowMem);
       python.resolve(python.getMinCPUFreq(), setMinCPUFreq);
@@ -258,6 +266,28 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
             if (cpus != cpusGlobal) {
               python.execute(python.setCPUs(cpus, smtGlobal));
               python.resolve(python.getCPUs(), setCPUs);
+            }
+          }}
+        />
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <SliderField
+          label="CPU Governor"
+          value={governorGlobal}
+          max={2}
+          min={0}
+          notchCount={3}
+          notchLabels={[
+            {notchIndex: 0, label: "Conserv"},
+            {notchIndex: 1, label: "Default"},
+            {notchIndex: 2, label: "Perform"},
+          ]}
+          notchTicksVisible={true}
+          onChange={(governor: number) => {
+            console.log("Governor slider is now " + governor.toString());
+            if (governor != governorGlobal) {
+              python.execute(python.setGovernor(governor));
+              python.resolve(python.getGovernor(), setGovernor);
             }
           }}
         />

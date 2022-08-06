@@ -33,17 +33,19 @@ startup_time = time.time()
 
 class CPU:
 
+    GOVERNORS=["conservative", "schedutil", "performance"]
+
     def __init__(self, number, settings=None):
         self.number = number
 
         if settings is not None:
             self.set_max_freq(settings["max_freq"])
             self.set_min_freq(settings["min_freq"])
+            self.set_governor(settings["governor"])
             if settings["online"]:
                 self.enable()
             else:
                 self.disable()
-            # TODO governor
         else:
             self.max_freq = 3500
             self.min_freq = 1400
@@ -77,6 +79,15 @@ class CPU:
 
         filepath = cpu_online_path(self.number)
         return read_from_sys(filepath) == "1"
+
+    def set_governor(self, governor: str):
+        if (self.status() == False):
+            filepath = cpu_online_path(self.number)
+            write_to_sys(filepath, 1)
+            self._write_scaling_governor(governor)
+            write_to_sys(filepath, 0)
+        else:
+            self._write_scaling_governor(governor)
 
     def governor(self) -> str:
         return self._read_scaling_governor()
@@ -155,6 +166,21 @@ class Plugin:
     async def get_smt(self) -> bool:
         logging.info(f"get_smt() -> {self.smt}")
         return self.smt
+
+    async def set_governor(self, index):
+        self.modified_settings = True
+        if index < 0 or index >= len(CPU.GOVERNORS):
+            return 0
+
+        selected_governor = CPU.GOVERNORS[index]
+
+        for cpu in self.cpus:
+            cpu.set_governor(selected_governor)
+
+        return len(self.cpus)
+
+    async def get_governor(self) -> int:
+        return CPU.GOVERNORS.index(self.cpus[0].governor())
     
     async def set_manual(self, enabled: bool) -> bool:
         self.modified_settings = True

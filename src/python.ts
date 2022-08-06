@@ -53,6 +53,14 @@ export function getSMT(): Promise<any> {
     return server!.callPluginMethod("get_smt", {});
 }
 
+export function setGovernor(index: number): Promise<any> {
+    return server!.callPluginMethod("set_governor", {"index": index});
+}
+
+export function getGovernor(): Promise<any> {
+    return server!.callPluginMethod("get_governor", {});
+}
+
 export function setManual(value: boolean): Promise<any> {
     return server!.callPluginMethod("set_manual", {"enabled": value});
 }
