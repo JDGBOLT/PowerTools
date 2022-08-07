@@ -124,6 +124,7 @@ class Plugin:
     old_gameid = None
     ready = False
     manual = False
+    lowmem = False
     profile_changed = False
     
     async def get_version(self) -> str:
@@ -192,6 +193,7 @@ class Plugin:
 
     async def set_lowmem(self, enabled: bool) -> bool:
         self.modified_settings = True
+        self.lowmem = enabled
         write_lowmem(enabled)
         return True
     
@@ -374,10 +376,12 @@ class Plugin:
                 if read_manual() != True:
                     write_manual(True)
                     self.write_clocks(self = self, gpu_max_freq = self.gpu_max_freq, gpu_min_freq= self.gpu_min_freq, cpu_min_freq=self.cpus[0].min_freq, cpu_max_freq= self.cpus[0].max_freq)
+                    write_lowmem(self.lowmem)
                 else:
                     current_clocks = self.get_clocks(self)
                     if current_clocks["gpu_min"] != self.gpu_min_freq or current_clocks["gpu_max"] != self.gpu_max_freq or current_clocks["cpu_min"] != self.cpus[0].min_freq or current_clocks["cpu_max"] != self.cpus[0].max_freq:
                         self.write_clocks(self = self, gpu_max_freq = self.gpu_max_freq, gpu_min_freq= self.gpu_min_freq, cpu_min_freq=self.cpus[0].min_freq, cpu_max_freq= self.cpus[0].max_freq)
+                        write_lowmem(self.lowmem)
             elif read_manual() == True:
                 self.write_clocks(self = self, gpu_min_freq = 200, gpu_max_freq =1600, cpu_min_freq = 1400, cpu_max_freq = 3500)
                 write_manual(False)
@@ -497,8 +501,7 @@ class Plugin:
             self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
         self.smt = settings["cpu"]["smt"]
         self.manual = settings["cpu"]["manual"]
-        if self.manual == True: 
-            write_lowmem(settings["cpu"]["lowmem"])
+        self.lowmem = settings["cpu"]["lowmem"]
         self.profile_changed = True
         # GPU
         self.gpu_max_freq = settings["gpu"]["max_freq"]
