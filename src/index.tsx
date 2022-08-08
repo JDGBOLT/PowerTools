@@ -322,8 +322,8 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
           label="Min CPU Frequency"
           disabled={(!manualGlobal)}
           value={minCPUFreqGlobal}
-          step={75}
-          minimumDpadGranularity={0.025}
+          step={50}
+          minimumDpadGranularity={0.01}
           max={3500}
           min={1400}
           showValue={true}
@@ -341,8 +341,8 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
           label="Max CPU Frequency"
           disabled={(!manualGlobal)}
           value={maxCPUFreqGlobal}
-          step={75}
-          minimumDpadGranularity={0.025}
+          step={50}
+          minimumDpadGranularity={0.01}
           max={3500}
           min={500}
           showValue={true}
