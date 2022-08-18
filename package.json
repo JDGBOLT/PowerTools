@@ -32,7 +32,7 @@
     "@rollup/plugin-typescript": "^8.3.4",
     "@types/react": "16.14.0",
     "@types/webpack": "^5.28.0",
-    "rollup": "^2.77.2",
+    "rollup": "^2.78.0",
     "rollup-plugin-import-assets": "^1.1.1",
     "shx": "^0.3.4",
     "tslib": "^2.4.0",
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "decky-frontend-lib": "*",
-    "pnpm": "^7.8.0",
+    "pnpm": "^7.9.3",
     "react": "^18.2.0",
     "react-icons": "^4.4.0"
   }
